@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://aframe.io/releases/1.1.0/aframe.min.js"></script>
+    <script src="scripts/aframe-physics-system.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+    <script src="https://unpkg.com/super-hands@^3.0.1/dist/super-hands.min.js"></script>
+    <script src="https://unpkg.com/aframe-physics-extras@0.1.2/dist/aframe-physics-extras.min.js"></script>
+    <script src="https://unpkg.com/aframe-event-set-component@^4.1.1/dist/aframe-event-set-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-environment-component@1.2.0/dist/aframe-environment-component.min.js"></script>
+    <script src="scripts/aframe-component.js"></script>
+    <script src="scripts/score.js"></script>
+  </head>
+  <body>
+    <a-scene id="bowlingScene" change-cam-mode physics="debug: false">
+      <a-entity light="type: ambient; color: #BBB"></a-entity>
+      <a-entity light="type: directional; color: #FFF; intensity: 4" position="-0.5 1 1"></a-entity>
+
+      <a-assets>
+        <audio id="pin-sfx" src="sound/strike.wav" preload="auto"></audio>
+        <audio id="bgm" src="sound/lo-fi.mp3" preload="auto"></audio>
+        <a-mixin id="touch"
+          physics-collider phase-shift
+          collision-filter="collisionForces: false"
+          static-body="shape: sphere; sphereRadius: 0.02"
+          super-hands="colliderEvent: collisions;
+                      colliderEventProperty: els;
+                      colliderEndEvent: collisions;
+                      colliderEndEventProperty: clearedEls;"
+        ></a-mixin>
+        <a-mixin id="table"
+          gltf-model="models/table/scene.gltf"
+          scale="0.5 1 0.6"
+          static-body
+        ></a-mixin>
+        <a-mixin id="ball" geometry="primitive: sphere; radius: 0.12"
+          hoverable grabbable
+          event-set__hoveron="_event: hover-start; material.opacity: 0.7; transparent: true"
+          event-set__hoveroff="_event: hover-end; material.opacity: 1; transparent: false"
+          dynamic-body="mass: 7.3;"
+          apply-impulse
+          shadow
+        ></a-mixin>
+        <a-mixin id="pin"
+          gltf-model="models/bowling_pin/scene.gltf"
+          scale="1.4 1.4 1.4"
+          body="type: dynamic; mass: 1.25; shape: none;"
+          shape__main="shape: cylinder;
+                      height: 0.38; 
+                      radiusTop: 0.05;
+                      radiusBottom: 0.01;
+                      offset: 0 0.14 0;"
+          sound="src: #pin-sfx"
+          bowling-sfx
+        ></a-mixin>
+        <a-mixin id="lane"
+          geometry="primitive: box;
+                    height: 15.9;
+                    width: 1.51;
+                    depth: 0.038;"
+          material="color: #000"
+          visible="false"
+          static-body
+        ></a-mixin>
+        <a-mixin id="side-lane"
+          geometry="primitive: box;
+                    height: 16;
+                    width: 0.4;
+                    depth: 0.35;"
+          material="color: #000"
+          static-body
+        ></a-mixin>
+      </a-assets>
+      
+
+      <a-entity>
+        <!-- mouse, default -->
+        <a-entity id="cam-mouse" enabled="true" camera look-controls wasd-controls position="0 1.6 0"
+          capture-mouse
+          raycaster="objects: .clickableObject" cursor="rayOrigin:mouse"
+          body="type: static; shape: sphere; sphereRadius: 0.001"
+          super-hands="colliderEvent: raycaster-intersection;
+                          colliderEventProperty: els;
+                          colliderEndEvent:raycaster-intersection-cleared;
+                          colliderEndEventProperty: clearedEls;">
+        </a-entity>
+
+        <!-- VR -->
+        <a-camera id="cam-vr" enabled="false" position="0 1.6 0"></a-camera>
+        <a-entity id="rhand" enabled="false" mixin="touch" hand-controls="hand: right"></a-entity>
+        <a-entity id="lhand" enabled="false" mixin="touch" hand-controls="hand: left"></a-entity>
+        
+      </a-entity>
+
+      <!-- bgm -->
+      <a-entity sound="src: #bgm; loop: true; autoplay: true;"></a-entity>
+
+      <a-entity environment="preset: forest"></name>></a-entity>
+      
+      <!-- floor -->
+      <a-plane color="#000" height="20" width="25" position="0 -0.1 -6"rotation="-90 0 0" static-body></a-plane>
+      <a-plane color="#000" height="10" width="10" position="0 -2 -20" rotation="-90 0 0" static-body></a-plane>
+
+      <!-- alley -->
+      <a-entity
+          gltf-model="models/future_alley/scene.gltf"
+          position="-1.35 0 7"
+          scale="0.008 0.008 0.008"
+      ></a-entity>
+      <!-- main lane -->
+      <a-entity mixin="lane" position="-0.01 -0.001 -8.5" rotation="-90 0 0"></a-entity>
+      <!-- side collider -->
+      <a-box mixin="side-lane" position="1.25 -0.001 -8.5" rotation="-90 0 0"></a-box>
+      <a-box mixin="side-lane" position="-1.29 -0.001 -8.5" rotation="-90 0 0"></a-box>
+
+      <!-- wall -->
+      <a-plane color="#000" position="0.5 0 -18" height="10" width="22"></a-plane>
+      
+      <!-- score -->
+      <a-entity
+        id="score"
+        text="
+          value: 0;
+          align: center;
+          wrapCount: 2;
+        "
+        position="-1.30034 3.07588 -13.74"
+        geometry="primitive: plane; height: 1.52; width: 2.7"
+        material="opacity: 0"
+        update-score
+      ></a-entity>
+
+      <!-- table for ball -->
+      <a-entity mixin="table" position="-1.29 0 0.1" rotation="0 -90 0"></a-entity>
+      <a-box visible="false" position="-1.29 0 0.1" rotation="0 -90 0" scale="1 1 0.6" static-body></a-box>
+
+      <!-- ball -->
+      <a-entity id="ball1" class="clickableObject" mixin="ball" position="-1.2 1 0.3" material="color: green"></a-entity>
+      <a-entity id="ball2" class="clickableObject" mixin="ball" position="-1.2 1 -0.1" material="color: blue"></a-entity>
+
+      <!-- table for button -->
+      <a-entity mixin="table" position="1.229 0 0.1" rotation="0 -90 0"></a-entity>
+      <a-box visible="false" position="1.229 0 0.1" rotation="0 -90 0" scale="1 1 0.6" static-body></a-box>
+      <a-text value="RESET" position="1.63 1 -0.24371" text="color: #ffffff" rotation="0 -90 0"></a-text>
+
+      <!-- button: base -->
+      <a-box color="#000" height="0.1" width="0.025" depth="0.15" position="1.137 0.55 0.1" static-body></a-box>
+      <a-box color="#000" height="0.1" width="0.025" depth="0.15" position="1.262 0.55 0.1" static-body></a-box>
+      <a-box color="#000" height="0.1" width="0.1" depth="0.025" position="1.2 0.55 0.038" static-body></a-box>
+      <a-box color="#000" height="0.1" width="0.1" depth="0.025" position="1.2 0.55 0.163" static-body></a-box>
+
+      <!-- button: anchor-->
+      <a-box id="anchor" visible="false" height="0.05" width="0.1" depth="0.1" position="1.2 2 0.1" static-body></a-box>
+
+      <!-- button: to push -->
+      <a-box id="button" class="clickableObject" color="red" height="0.11" width="0.099" depth="0.099" position="1.2 1 0.1" 
+            spring="target: #anchor; restLength: 0.92" 
+            push-button
+            dynamic-body></a-box>
+
+      <!-- pin -->
+      <a-entity id="one" mixin="pin" position="0 0 -15.6"></a-entity>
+      <a-entity id="two" mixin="pin" position="-0.15 0 -15.85"></a-entity>
+      <a-entity id="three" mixin="pin" position="0.15 0 -15.85"></a-entity>
+      <a-entity id="four" mixin="pin" position="-0.3 0 -16.1"></a-entity>
+      <a-entity id="five" mixin="pin" position="0 0 -16.1"></a-entity>
+      <a-entity id="six" mixin="pin" position="0.3 0 -16.1"></a-entity>
+      <a-entity id="seven" mixin="pin" position="-0.45 0 -16.35"></a-entity>
+      <a-entity id="eight" mixin="pin" position="-0.15 0 -16.35"></a-entity>
+      <a-entity id="nine" mixin="pin" position="0.15 0 -16.35"></a-entity>
+      <a-entity id="ten" mixin="pin" position="0.45 0 -16.35"></a-entity>
+     </a-scene>
+  </body>
+</html>
